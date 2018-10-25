@@ -1,0 +1,76 @@
+#!/usr/bin/python
+# coding=utf-8
+import pickle
+import os 
+from tts import tts
+from collections import OrderedDict
+import time
+# from pygame import mixer
+from playsound import playsound
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+wave_path = dir_path + "/../wave/"
+
+pickle_file = dir_path+'/'+'history.p'
+
+hist = OrderedDict() # too many files, delete some
+# mixer.init()
+
+def init():
+    global hist
+    if not os.path.isfile(pickle_file):
+        with open(pickle_file, 'wb') as f:
+            pickle.dump(hist, f)
+
+    with open(pickle_file, 'rb') as f:
+        hist = pickle.load(f)
+
+
+def exit():
+    with open(pickle_file, 'wb') as f:
+        pickle.dump(hist, f)
+
+def say(TEXT):
+    wave = ""
+    # if cached, play it, otherwise request
+    if TEXT in hist:
+        wave = wave_path+hist[TEXT]
+
+    if not os.path.isfile(wave+'.mp3'):
+        t = str(time.time())
+        wave = wave_path + t
+        tts(TEXT, wave)
+        hist[TEXT] = t
+
+    def play(wave):
+        playsound(wave)
+        # mixer.music.load(wave)
+        # mixer.music.play()
+        # while mixer.music.get_busy():
+        #     time.sleep(0.1)
+        #     continue
+    play(wave+".mp3")
+
+def test():
+    TEXT = "我要进电梯了"
+    say(TEXT)
+    say("你他妈挡住我了")
+
+def say_ros(msg):
+    say(msg.data)
+
+def main():
+    import rospy
+    from std_msgs.msg import String
+    rospy.init_node("tts")
+    rospy.Subscriber("tts", String, say_ros, queue_size=10)
+
+    while not rospy.is_shutdown():
+        rospy.Rate(10).sleep()
+    
+if __name__ == '__main__':
+    init()  
+    # test()
+    main()
+    exit()  
+    
